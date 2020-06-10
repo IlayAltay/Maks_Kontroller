@@ -26,6 +26,7 @@
 #include "ssd1306.h"
 #include "ssd1306_tests.h"
 #include "ds18b20.h"
+#include "math.h"
 #define Black 0x00
 #define White 0x01
 #define srartchasov  12
@@ -36,9 +37,9 @@
 #define OFF 0
 #define vkluchitna_min 5    //интервал времени по умолчанию для ывечернего полива
 //время начала полива  18-00
-#define hoursstartpolivavto 18    //время старта полива
-#define minutstartpolivavto 20
-#define hoursresetflag  19     //время суточное для сброса флага полиа
+//#define hoursstartpolivavto 20    //время старта полива
+//#define minutstartpolivavto 00
+#define hoursresetflag  23     //время суточное для сброса флага полиа
 #define minutresetflag  00
 /* USER CODE END Includes */
 
@@ -84,7 +85,60 @@ static void MX_RTC_Init(void);
 /* USER CODE BEGIN 0 */
 
 
-//---------------------------------------------------------
+//--------------------------------------------------------------------------------
+//функция установки часов
+static void MX_RTC_Init2(uint8_t hoursmi,uint8_t minmi)
+{
+
+  //RTC_TimeTypeDef sTime = {0};
+ // RTC_DateTypeDef DateToUpdate = {0};
+
+ 	//После генерации проекта куб затирает функцию RTC
+	//нужно 1. Вынести в голобальные переменные RTC_TimeTypeDef sTime = {0};
+	  	  	  	  	  	  	  	  	  	  	  //RTC_DateTypeDef DateToUpdate = {0};
+
+	//        2.Закомментить   -if (HAL_RTC_SetTime    и
+	//        				 -if (HAL_RTC_SetDate      для того чтобы после перзагрузки время не инициализировалось
+
+//------------------------------------------------------------------------------------
+  /* USER CODE END RTC_Init 1 */
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+  hrtc.Init.OutPut = RTC_OUTPUTSOURCE_ALARM;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = hoursmi;
+  sTime.Minutes = minmi;
+  sTime.Seconds = 0;
+
+ if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+   Error_Handler();
+  }
+  DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+  DateToUpdate.Month = RTC_MONTH_MAY;
+  DateToUpdate.Date = 11;
+  DateToUpdate.Year = 20;
+
+ //if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK)
+ // {
+ //   Error_Handler();
+// }
+
+
+}
+//---------------------------------------------------------------------------------
 //структура для инициализации меню на дисплее
 struct current_line
 {
@@ -159,11 +213,11 @@ uint8_t press_Button(){
 }
 //----------------------------------------------------------------------------------
 //Функция которая смотрит нужно ли изменить подуровень меню
-uint8_t nextLevel(uint8_t currentlevel,uint8_t numer_button){
-	uint8_t next;
-		if(currentlevel==10){
-			next=20;      //menu
-		}else if(currentlevel==20){
+uint16_t nextLevel(uint16_t currentlevel,uint8_t numer_button){
+	uint16_t next;
+		if(currentlevel==10){    //находмися в меню по умолчанию
+			next=20;      //menu  идем в главное меню
+		}else if(currentlevel==20){  //из главного меню можно перйти
 								  if(numer_button==1){
 									  next=211;     //Ruchnoi time
 								  }else if(numer_button==2){
@@ -188,10 +242,15 @@ uint8_t nextLevel(uint8_t currentlevel,uint8_t numer_button){
 				  next=currentlevel;
 			  }
 		}else if(currentlevel==231){  //Установки
-								  if(numer_button==4){
+								  if(numer_button==1){
+									  next=2311;   //   Холодный день
+								  }else if(numer_button==2){
+									  next=2312;    //  Жакрий день
+									}else if(numer_button==3){
+										 next=2320;   // Установка интервалов мин
+									}else  if(numer_button==4){
 									  next=10;
-								  }else{
-									  next=currentlevel;
+
 								  }
 		}else if(currentlevel==232){
 								  if(numer_button==4){
@@ -201,13 +260,54 @@ uint8_t nextLevel(uint8_t currentlevel,uint8_t numer_button){
 								  if(numer_button==4){
 									  next=10;
 								  }
-		}else{
+		}else if(currentlevel==2320){
+									if(numer_button==1){
+											next=2321;   //   Длина подачи
+									}else if(numer_button==2){
+											next=2322;    //  Длина перерыва
+									}else if(numer_button==3){
+										next=2323;    //  Настройки времени
+									}else  if(numer_button==4){
+										next=231;
+
+									}
+		}else if(currentlevel==2323){
+									if(numer_button==1){
+											next=23231;   //   Установка времени системы
+									}else if(numer_button==2){
+											next=23232;    //  Утановка времени старта полива
+									}else if(numer_button==3){
+											next=23233;    //  Просмотр параметров
+									}else  if(numer_button==4){
+											next=2320;    //возврат  в предидущее меню
+									}
+		}else if(currentlevel==23231){  //изменение системного времени
+									if(numer_button==1){
+										next=23234;   //   Установка часов
+									}else if(numer_button==2){
+										next=23235;    //  уставновка мин
+									}else if(numer_button==3){
+										next=2323;    //  возврат в предидущее меню
+									}else  if(numer_button==4){
+										next=2323;    //возврат  в предидущее меню
+									}
+		}else if(currentlevel==23232){   //меню изменения времени старта
+									if(numer_button==1){
+										next=23236;   //   Установка часов
+									}else if(numer_button==2){
+										next=23237;    //  уставновка мин
+									}else if(numer_button==3){
+										next=2323;    //  возврат в предидущее меню
+									}else  if(numer_button==4){
+										next=2323;    //возврат  в предидущее меню
+									}
+		}else {
 			next=currentlevel;
 		}
 
 	return next;
 }
-//распределение уровней меню
+//Карта распределение уровней меню
 	     //      1.0 default
 	     //        |
 	     //      2.0 menu
@@ -218,9 +318,35 @@ uint8_t nextLevel(uint8_t currentlevel,uint8_t numer_button){
 	     //        |---2.3 Settings
 	     //        |     |----2.3.1 Nastroiki info
 	     //        |     |      |-----2.3.1.1 Холодный день длина интервала полива
+		//			|	|		|			|----Текущее значение мин
+		//			|	|		|			|----Изменяемое занчение мин
 		 //		   |	 |		|-----2.3.1.2 Жаркий день длина интервала полива
 		 //		   |	 |
-	     //        |     |----2.3.2 Сколько раз поливать
+	     //        |     |----2.3.2 Интервалы полива//Сколько раз поливать
+		//						|------2.3.2.1 Колво мин подачи воды
+		//			|	|		|			|----Текущее значение
+		//			|	|		|			|----Изменяемое
+		//						|------2.3.2.2 Колво мин интервал перерыва
+		//			|	|		|			|---Текущее значение
+		//			|	|		|			|---Изменяемое значение
+		//			|	|		|------2.3.2.3 Установка времени
+		//			|	|		|			|------2.3.2.3.1 Установка часов
+		//			|	|		|			|			|------2.3.2.3.4 Часы
+		//			|	|		|			|			|			|----Текущее значение мин
+		//			|	|		|			|			|			|----Изменяемое занчение мин
+		//			|	|		|			|			|------2.3.2.3.5 Мин
+		//			|	|		|			|						|----Текущее значение мин
+		//			|	|		|			|						|----Изменяемое занчение мин
+		//			|	|		|			|------2.3.2.3.2 Установка времени старта
+		//			|	|		|			|			|------2.3.2.3.6 Часы
+		//			|	|		|			|			|			|----Текущее значение мин
+		//			|	|		|			|			|			|----Изменяемое занчение мин
+		//			|	|		|			|			|------2.3.2.3.7 Мин
+		//			|	|		|			|						|----Текущее значение мин
+		//			|	|		|			|						|----Изменяемое занчение мин
+		//			|	|		|			|-----2.3.2.3.3 Просмотр времени когда запланирован старт
+		//			|	|		|			|------Отмена
+		//						|------Otmena
 	     //        |     |----2.3.3 Настройка часов
 	     //        |
 	     //        |---2.4 Cancel
@@ -231,7 +357,7 @@ uint8_t getNewflagforpoliv(uint8_t currentflag){
 		HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 		if(sTime.Hours==hoursresetflag){
 			if(sTime.Minutes==minutresetflag){
-				if(flag!=0){
+				if(currentflag!=0){
 				flag=0;
 				ssd1306_Fill(Black);
 				ssd1306_SetCursor(0,0);
@@ -259,64 +385,159 @@ uint8_t getNewflagforpoliv(uint8_t currentflag){
 }
 //----------------------------------------------------------------------------------
 //функция автоматического полива
-uint8_t autoRegim(uint8_t intervalmin,uint8_t flagpolivcomplete){  //на вход даем на сколько мин включить
+uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t flagpolivcomplete,uint8_t hoursstartpolivavto,uint8_t minutstartpolivavto ){  //на вход даем на сколько мин включить
 	 uint8_t status; // статус возврата результата работы функции 1-полив успешно завершен
 	                                                           // 0-поливать рано
 	                                                           // 3-полив прерван в ручную
+	 	 	 	 	 	 	 	 	 	 	 	 	 	 	   // 4-полив перван на перекур
 	 uint16_t intervalzadan;
 	 uint8_t flagstart=0;  //флаг активации полива
 	 uint8_t minstart;     //время старта
 	 uint8_t secstart;
 	 uint16_t allsecstart;   //абсолютное время старта в секундах
+	 uint16_t timer_vision;  //обратный отсчет
 	 uint8_t mincurrent;   //текущие показания времени
 	 uint8_t seccurrent;
 	 uint16_t allseccurrent;  //абсолютное время текущее в секунтах
-	 char intervalchar[12];
+	 char intervalchar[12];   //тестовая для вывода
+	 char kolchar[12];
+	 uint8_t kolvovklucheny;  //сколько раз включить в зависимости от общего времени и перерыва
+	 float kolvovkluchfloat;       //промежуточный вариант колва включений не округленный
+	 uint8_t periodOnflag;    //флаг когда период нужно включить  1- полив 0 перекур
+
 	  //заходим функцию проверяем время если наступило 18-00 то включаем полив и крутимся здесь
 	  //по окончании ставим флаг полива на сегодня
 
 	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 	  if(sTime.Hours==hoursstartpolivavto){ //если наступило 18 часов
-		  if(sTime.Minutes==minutstartpolivavto){  //если нгаступило 00 мин
+		  if(sTime.Minutes==minutstartpolivavto){  //если наступило 00 мин
 			  if(flagpolivcomplete==0){   //если еще не поливали то приступаем к поливу
 				  Poliv(ON);  //включаем полив
-				  intervalzadan=intervalmin*60;  //переводим заданный интервал из мин в секунды
-				  flagstart=1;
+
+				  //intervalzadan=intervalmin*60;  //переводим заданный интервал из мин в секунды
+
+				  flagstart=1; //стваим флаг что нужно поливать
+				  periodOnflag=1;    //ставим флаг для первой половины полива
 				  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
-				  //сохраняем время начала полива
+				  //сохраняем время начала полива те во столько то мин-сек полив стартует
 				  minstart=sTime.Minutes;
 				  secstart=sTime.Seconds;
 				  allsecstart=secstart+minstart*60; //переводим в секунды
-				  allsecstart=allsecstart+intervalzadan;
-				  while(flagstart==1){//заходим в петлю
-					  	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
-					  	  mincurrent=sTime.Minutes;
-					  	  seccurrent=sTime.Seconds;
-					  	  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+				  //allsecstart=allsecstart+intervalzadan;
 
-					  	  snprintf(intervalchar,11,"%d%c%d",allseccurrent,"_",intervalzadan);
-					  	  if(allsecstart<=allseccurrent){//когда заданный интервал исчерпан
-					  		  //то
-					  		flagstart=2; //говорим что все полилось все окей
-					  	  }else{
-					  		  //отображаем на дисплей что просиходит
-					  		ssd1306_Fill(Black);
-					  		ssd1306_SetCursor(0,0);
-					  		ssd1306_WriteString(" AUTO",Font_11x18,White);
-					  		ssd1306_SetCursor(0,15);
-					  		ssd1306_WriteString(intervalchar,Font_11x18,White);
-					  		ssd1306_SetCursor(0,30);
-					  		ssd1306_WriteString("Poliv_ON",Font_11x18,White);
-					  		ssd1306_SetCursor(0,45);
-					  		ssd1306_WriteString("Otmena",Font_11x18,White);
-					  		ssd1306_UpdateScreen();
+				  //вычиляем сколько раз надо прерваться на прерыв или сколько раз полить
+				  kolvovkluchfloat=intervalmin/pereriv_megdupolivami;
+				  if(kolvovkluchfloat<1){
+					  kolvovklucheny=1;  //поливать один раз
+				  }else if(kolvovkluchfloat==1){
+					  kolvovklucheny=1;
+				  }else if(kolvovkluchfloat>1){
+					  kolvovklucheny=ceil(kolvovkluchfloat);
 
-					  	  }
-					  	  if(HAL_GPIO_ReadPin(GPIOC,fourth_button_Pin)==GPIO_PIN_RESET){ //останов по кнопке 4
-					  		flagstart=3;
-					  	  }
-					  	  HAL_Delay(2000);
 				  }
+				  snprintf(kolchar,11,"%d_raz",kolvovklucheny);
+
+				  intervalzadan=pereriv_megdupolivami;//вычисляем длину короткого интервала В мин
+				  intervalzadan=intervalzadan*60; //переводим в секунды
+
+
+				  while(flagstart==1){//заходим в петлю если есть разрешение на полив
+
+
+
+
+
+					  while(kolvovklucheny>0){
+
+						  while(periodOnflag==1){    //половинка когда поливаем
+							  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
+							  mincurrent=sTime.Minutes;
+							  seccurrent=sTime.Seconds;
+							  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+							  timer_vision=allsecstart+intervalzadan-allseccurrent;//обратный отсчет для дисплея
+							  snprintf(intervalchar,11,"%d_%d",timer_vision,intervalzadan);
+							  snprintf(kolchar,11,"%d_raz",kolvovklucheny);
+							  if((allsecstart+intervalzadan)<=allseccurrent){//когда заданный интервал исчерпан
+								  //то
+								  periodOnflag=0; //говорим что все полилось втекущем периоде все окей
+							  }else{
+								  //отображаем на дисплей что просиходит
+								ssd1306_Fill(Black);
+								ssd1306_SetCursor(0,0);
+								ssd1306_WriteString(kolchar,Font_11x18,White);
+								//ssd1306_WriteString(" AUTO",Font_11x18,White);
+								ssd1306_SetCursor(0,15);
+								ssd1306_WriteString(intervalchar,Font_11x18,White);
+								ssd1306_SetCursor(0,30);
+								ssd1306_WriteString("Poliv_ON",Font_11x18,White);
+								ssd1306_SetCursor(0,45);
+								ssd1306_WriteString("Otmena",Font_11x18,White);
+								ssd1306_UpdateScreen();
+
+							  }
+							  if(HAL_GPIO_ReadPin(GPIOC,fourth_button_Pin)==GPIO_PIN_RESET){ //останов по кнопке 4
+								  periodOnflag=0;   //скидываем все флаги так как все по требованию
+								  kolvovklucheny=0;
+								  flagstart=3;
+								  //flagstart=3;
+							  }
+							  HAL_Delay(1000);
+						  }
+						  Poliv(OFF); //выключаем полив
+						  allsecstart=allsecstart+intervalzadan; //переносим время старта для следующего промежутка
+						  kolvovklucheny--;
+						  //ssd1306_Fill(Black);
+						  //ssd1306_UpdateScreen();
+
+
+						  while((periodOnflag==0)&&(kolvovklucheny!=0)){ //половинка когда ждем поллив выключен но будем продложать
+							  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
+							  mincurrent=sTime.Minutes;
+							  seccurrent=sTime.Seconds;
+							  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+							  if((allsecstart+intervalzadan)<=allseccurrent){
+								  periodOnflag=1;  //перебрасываем флаг что нужно снова включать
+							  }
+							  timer_vision=allsecstart+intervalzadan-allseccurrent; //вычисляем сколько осталось
+							  snprintf(kolchar,11,"%d_ostalos",timer_vision);
+
+							  //отображаем на дисплей что просиходит
+							  ssd1306_Fill(Black);
+							  	ssd1306_SetCursor(0,0);
+							  	ssd1306_WriteString(kolchar,Font_11x18,White);
+							  	//ssd1306_WriteString(" AUTO",Font_11x18,White);
+							  	ssd1306_SetCursor(0,15);
+							  	ssd1306_WriteString("Pereriv",Font_11x18,White);
+							  	ssd1306_SetCursor(0,30);
+							  	ssd1306_WriteString("Poliv_OFF",Font_11x18,White);
+							  	ssd1306_SetCursor(0,45);
+							  	ssd1306_WriteString("Otmena",Font_11x18,White);
+							  	ssd1306_UpdateScreen();
+
+
+							  	if(HAL_GPIO_ReadPin(GPIOC,fourth_button_Pin)==GPIO_PIN_RESET){ //останов по кнопке 4
+							  		  periodOnflag=0;    //скидываем флаги так как все по требованию
+							  		kolvovklucheny=0;
+							  		  flagstart=3;
+  								  }
+								  HAL_Delay(1000);
+						  }
+						  //когда отработан миницикл равный интервалу полива + интервалу
+						  //ожидания пока вода впитается то вновь сдвигаем время старта
+						  if((flagstart!=3)&&(kolvovklucheny!=0)){
+							  allsecstart=allsecstart+intervalzadan; //переносим время старта для следующего промежутка
+							  Poliv(ON);  //включаем полив
+						  }else if(kolvovklucheny==0){   //  если количество включений пришло к нулю
+							  flagstart=2;  //сбрасываем флаг и выходим из функции автополива
+						  }
+
+
+					  }
+
+
+
+				  }
+				  //от while-------------------------
 				  Poliv(OFF); //выключаем полив
 				  //пишем на дисплей
 				  ssd1306_Fill(Black);
@@ -336,7 +557,7 @@ uint8_t autoRegim(uint8_t intervalmin,uint8_t flagpolivcomplete){  //на вход дае
 
 			  }
 		  }
-	  }
+	  }//от if запроса времени - старта полива
 	if(flagstart==0){//проверяем флаг старта что произошло в функции
 		status=0;   //значит поливать рано
 	}else if(flagstart==2){
@@ -393,7 +614,7 @@ void Poliv(uint8_t status){  //на вход подается  статус что нужно вкл или выключ
 	}
 }
 //---------------------------------------------------------------------------------
-//функция отработки клапан в ручном режиме на определенный промежукток времени
+//функция отработки клапана в ручном режиме на определенный промежукток времени
 void action_Valvetotime(uint8_t timeact){
 	uint16_t secund_interval;
 	uint16_t secund;
@@ -474,11 +695,289 @@ char what_Time_ofday(uint8_t Hours){
 	return what_time;
 }
 //------------------------------------------------------------------------------------
+//Функция изменеия часов
+uint8_t setHoursmethod(uint8_t hour){
+	//заполняем дисплей
+	 //считываем кнопки
+	 //изменяем знчения мин
+	  //Обновляем дисплей
+	  //при выходе возвращаем значение новое значение интервала
+		 uint8_t new_hours;
+	   	 char tekushee_znachenie[12];
+		 char new_znachenie[12];
+
+
+		 snprintf(tekushee_znachenie,12,"%d_Old_min",hour); //перобразовние в text
+		 	 	 	 snprintf(new_znachenie,12,"%d_New_hour",hour); //на входе одинаковые занчения часа
+		 	 	 	new_hours=hour;  //на входе значения часа одинаковые
+		 	 	 	 //заполняем дисплей
+		 	 	 	ssd1306_SetCursor(0,0);
+		 	 	 	ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,15);
+		 	 	 	ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,30);
+		 	 	 	ssd1306_WriteString("1&2 Change",Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,45);
+		 	 	 	ssd1306_WriteString("Exit&Save",Font_11x18,White);
+		 	 	 	ssd1306_UpdateScreen();
+		 while(press_Button()!=41){  //пока не нажата кнопка 4
+		 	 	 	if(press_Button()==11){
+		 	 	 		 	if(new_hours>0){
+		 	 	 		 	new_hours--;
+		 	 	 		 	}else{
+		 	 	 		 	new_hours=24;
+		 	 	 		 	}
+		 	 	 	}else if(press_Button()==21){
+		 	 	 		 	if(new_hours<24){
+		 	 	 		 	new_hours++;
+		 	 	 		 	}else{
+		 	 	 		 	new_hours=0;
+		 	 	 		 			}
+		 	 	 		 	}
+		 	 	 	snprintf(new_znachenie,12,"%d_New_hour",new_hours);//обновляем значение
+		 	 	 	 // пересобирваем вывод на дисплей
+		 	 	 	ssd1306_SetCursor(0,0);
+		 	 	 	ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,15);
+		 	 	 	ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,30);
+		 	 	 	ssd1306_WriteString("1&2 Change",Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,45);
+		 	 	 	ssd1306_WriteString("Exit&Save",Font_11x18,White);
+		 	 	 	ssd1306_UpdateScreen();
+
+		 }//от while
+		           //навыходе пишем что занчение изменено
+		 	 		ssd1306_SetCursor(0,0);
+		 	 		ssd1306_WriteString("Novoe znachen",Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,15);
+		 	 		ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,30);
+		 	 		ssd1306_WriteString("Ustanovleno",Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,45);
+		 	 		ssd1306_WriteString("Exit",Font_11x18,White);
+		 	 		ssd1306_UpdateScreen();
+		 	 		HAL_Delay(3000);
+
+
+	return new_hours;
+}
+//-------------------------------------------------------------------------------------
+//функция изменения минут
+uint8_t setMinutsmethod(uint8_t minuts){
+	//заполняем дисплей
+	 //считываем кнопки
+	 //изменяем знчения мин
+	  //Обновляем дисплей
+	  //при выходе возвращаем значение новое значение интервала
+		 uint8_t new_minuts;
+	   	 char tekushee_znachenie[12];
+		 char new_znachenie[12];
+
+
+		 snprintf(tekushee_znachenie,12,"%d_Old_min",minuts); //перобразовние в text
+		 	 	 	 snprintf(new_znachenie,12,"%d_New_min",minuts); //на входе одинаковые занчения часа
+		 	 	 	new_minuts=minuts;  //на входе значения часа одинаковые
+		 	 	 	 //заполняем дисплей
+		 	 	 	ssd1306_SetCursor(0,0);
+		 	 	 	ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,15);
+		 	 	 	ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,30);
+		 	 	 	ssd1306_WriteString("1&2 Change",Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,45);
+		 	 	 	ssd1306_WriteString("Exit&Save",Font_11x18,White);
+		 	 	 	ssd1306_UpdateScreen();
+		 while(press_Button()!=41){  //пока не нажата кнопка 4
+		 	 	 	if(press_Button()==11){
+		 	 	 		 	if(new_minuts>0){
+		 	 	 		 	new_minuts--;
+		 	 	 		 	}else{
+		 	 	 		 	new_minuts=59;
+		 	 	 		 	}
+		 	 	 	}else if(press_Button()==21){
+		 	 	 		 	if(new_minuts<59){
+		 	 	 		 	new_minuts++;
+		 	 	 		 	}else{
+		 	 	 		 	new_minuts=0;
+		 	 	 		 			}
+		 	 	 		 	}
+		 	 	 	snprintf(new_znachenie,12,"%d_New_min",new_minuts);//обновляем значение
+		 	 	 	 // пересобирваем вывод на дисплей
+		 	 	 	ssd1306_SetCursor(0,0);
+		 	 	 	ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,15);
+		 	 	 	ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,30);
+		 	 	 	ssd1306_WriteString("1&2 Change",Font_11x18,White);
+		 	 	 	ssd1306_SetCursor(0,45);
+		 	 	 	ssd1306_WriteString("Exit&Save",Font_11x18,White);
+		 	 	 	ssd1306_UpdateScreen();
+
+		 }//от while
+		           //навыходе пишем что занчение изменено
+		 	 		ssd1306_SetCursor(0,0);
+		 	 		ssd1306_WriteString("Novoe znachen",Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,15);
+		 	 		ssd1306_WriteString(new_znachenie,Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,30);
+		 	 		ssd1306_WriteString("Ustanovleno",Font_11x18,White);
+		 	 		ssd1306_SetCursor(0,45);
+		 	 		ssd1306_WriteString("Exit",Font_11x18,White);
+		 	 		ssd1306_UpdateScreen();
+		 	 		HAL_Delay(3000);
+
+
+	return new_minuts;
+}
+//-----------------------------------------------------------------------------------------
+//функция подменю установки интервала полива для холодного дня
+uint16_t setHolod2311(uint16_t current_min){//
+	  //заполняем дисплей
+	  //считываем кнопки
+	  //изменяем знчения мин
+	  //Обновляем дисплей
+	  //при выходе возвращаем значение новое значение интервала
+	 uint16_t new_min_interval;
+	 char tekushee_znachenie[12];
+	 char new_znachenie[12];
+
+	 	 	 snprintf(tekushee_znachenie,12,"%d_Old_min",current_min); //перобразовние в text
+	 	 	 snprintf(new_znachenie,12,"%d_New_min",current_min); //на входе одинаковые занчения мин
+	 	 	new_min_interval=current_min;  //на входе значения мин одинаковые
+	 	 	 //заполняем дисплей
+	 	 	 	 	ssd1306_SetCursor(0,0);
+	 				ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+	 				ssd1306_SetCursor(0,15);
+	 				ssd1306_WriteString(new_znachenie,Font_11x18,White);
+	 				ssd1306_SetCursor(0,30);
+	 				ssd1306_WriteString("1&2 Change",Font_11x18,White);
+	 				ssd1306_SetCursor(0,45);
+	 				ssd1306_WriteString("Exit&Save",Font_11x18,White);
+	 				ssd1306_UpdateScreen();
+	 		while(press_Button()!=41){  //пока не нажата кнопка 4
+	 				if(press_Button()==11){
+	 					if(new_min_interval>0){
+	 					new_min_interval--;
+	 					}else{
+	 						new_min_interval=0;
+	 					}
+	 				}else if(press_Button()==21){
+	 					if(new_min_interval<719){
+	 					new_min_interval++;
+	 					}else{
+	 						new_min_interval=720;
+	 					}
+	 				}
+	 				 snprintf(new_znachenie,12,"%d_New_min",new_min_interval);//обновляем значение
+	 			     // пересобирваем вывод на дисплей
+	 				 	 	 	 	 	ssd1306_SetCursor(0,0);
+	 					 				ssd1306_WriteString(tekushee_znachenie,Font_11x18,White);
+	 					 				ssd1306_SetCursor(0,15);
+	 					 				ssd1306_WriteString(new_znachenie,Font_11x18,White);
+	 					 				ssd1306_SetCursor(0,30);
+	 					 				ssd1306_WriteString("1&2 Change",Font_11x18,White);
+	 					 				ssd1306_SetCursor(0,45);
+	 					 				ssd1306_WriteString("Exit&Save",Font_11x18,White);
+	 					 				ssd1306_UpdateScreen();
+	 		}
+
+	 		//навыходе пишем что занчение изменено
+	 		ssd1306_SetCursor(0,0);
+	 		ssd1306_WriteString("Novoe znachen",Font_11x18,White);
+	 		ssd1306_SetCursor(0,15);
+	 		ssd1306_WriteString(new_znachenie,Font_11x18,White);
+	 		ssd1306_SetCursor(0,30);
+	 		ssd1306_WriteString("Ustanovleno",Font_11x18,White);
+	 		ssd1306_SetCursor(0,45);
+	 		ssd1306_WriteString("Exit",Font_11x18,White);
+	 		ssd1306_UpdateScreen();
+	 		HAL_Delay(3000);
+
+	return new_min_interval;
+}
+//-------------------------------------------------------------------------------------
+//Отображения технических параметров автоматического режима полива
+//Показывает когда назначен полив
+//Сколько поливать сколько перерыв
+void soberiMenu23233(uint8_t hour,uint8_t min,uint16_t timeperiodOn,uint16_t pererivOFF){
+	char time_start[12];
+	char param_start[12];
+	 	 	 	 snprintf(time_start,12,"%d:%d",hour,min);
+		int i=3;
+	 	 	while(i>0){
+	 	 	    ssd1306_SetCursor(0,0);
+		 		ssd1306_WriteString(time_start,Font_11x18,White);
+		 		ssd1306_SetCursor(0,15);
+		 		ssd1306_WriteString("Vremya starta",Font_11x18,White);
+		 		ssd1306_SetCursor(0,30);
+		 		ssd1306_WriteString("Ustanovleno",Font_11x18,White);
+		 		ssd1306_SetCursor(0,45);
+		 		ssd1306_WriteString("Exit",Font_11x18,White);
+		 		ssd1306_UpdateScreen();
+		 		HAL_Delay(2000);
+		 		ssd1306_Fill(Black);
+		 		ssd1306_UpdateScreen();
+		 		HAL_Delay(1000);
+		 		i--;
+	 	 	}
+	 	 	i=3;
+	 	 	 snprintf(param_start,12,"%d:%d",timeperiodOn,pererivOFF);
+	 	 	while(i>0){
+	 	 		 	 	    ssd1306_SetCursor(0,0);
+	 	 			 		ssd1306_WriteString(param_start,Font_11x18,White);
+	 	 			 		ssd1306_SetCursor(0,15);
+	 	 			 		ssd1306_WriteString("poliv&ogidanie",Font_11x18,White);
+	 	 			 		ssd1306_SetCursor(0,30);
+	 	 			 		ssd1306_WriteString("Ustanovleno",Font_11x18,White);
+	 	 			 		ssd1306_SetCursor(0,45);
+	 	 			 		ssd1306_WriteString("Exit",Font_11x18,White);
+	 	 			 		ssd1306_UpdateScreen();
+	 	 			 		HAL_Delay(2000);
+	 	 			 		ssd1306_Fill(Black);
+	 	 			 		ssd1306_UpdateScreen();
+	 	 			 		HAL_Delay(1000);
+	 	 			 		i--;
+	 	 		 	 	}
+}
+//--------------------------------------------------------------------------------------
+void soberiMenu23232(struct current_line *setline){
+		setline->line1="Hours  ";
+		setline->line2="Min  ";
+		setline->line3="----------";
+		setline->line4="Otmena";
+}
+
+//-------------------------------------------------------------------------------------
+void soberiMenu23231(struct current_line *setline){
+	setline->line1="Hours  ";
+	setline->line2="Min  ";
+	setline->line3="----------";
+	setline->line4="Otmena";
+
+}
+//-------------------------------------------------------------------------------------
+void soberiMenu2323(struct current_line *setline){
+						setline->line1="Time current ";
+						setline->line2="Time start ";
+						setline->line3="Look tStart";
+						setline->line4="Otmena";
+}
+//------------------------------------------------------------------------------------
+//Функция сборки меню для утсанвоки мин плива без температурного режима
+void soberiMenu2320(struct current_line *setline){
+					setline->line1="Podacha ";
+					setline->line2="Pereriv ";
+					setline->line3="Time settings";
+					setline->line4="Otmena";
+}
+//-------------------------------------------------------------------------------------
 //функция сборки меню 231
 void soberiMenu231(struct current_line *setline){
 	            setline->line1="Holodnyi ";
 				setline->line2="Garkiy ";
-				setline->line3="Skolko raz";
+				//setline->line3="Skolko raz";
+				setline->line3="Skolko min";
 				setline->line4="Otmena";
 }
 
@@ -627,7 +1126,7 @@ int main(void)
     float temper;        //для ds18b20
     char c;
     uint8_t state_button;   //статус нажатия кнопок  1- нажата кн1 2 -нажата кн2 3 нажата кн3 4 нажата кн4 0- не нажата кн
-    uint8_t level_menu;     //уровень меню отображаемый на LCD 10(1.0) меню по умолчанию
+    uint16_t level_menu;     //уровень меню отображаемый на LCD 10(1.0) меню по умолчанию
                                             //  20(2.0) меню
     										//  21(2.1)
                                             //  22(2.2)
@@ -635,6 +1134,14 @@ int main(void)
      char *metka;
      uint8_t polivcomlete_flag=0;  //флаг что сегодня поливали (0,1) сбрасывается в 0 в 11-59 ставится в функции autoRegim
      uint8_t sostoyaniepoliva;    //результат работы функции автополива
+     uint16_t holodny_periodmin=5;  //время полива в холодное время
+     uint16_t garky_periodmin=7;    //время полива в жаркий период
+     uint16_t interval_autoregMin=10;   //  общее количество мин которое должно быть поступление воды
+     uint16_t pereriv_intervalMinforauto=5;  //время короткого промежутка для остановки полива чтобы вода впиталась и не заливал
+	 uint8_t hoursstartpolivavto=18;    //время старта полива  часов
+	 uint8_t minutstartpolivavto=10;    //мин
+	 uint8_t hours_systemtime;    //переменная для утсановки системного времени
+	 uint8_t minut_systemtime;    //переменная для установки системного времени
      /* USER CODE END 1 */
   
 
@@ -890,9 +1397,13 @@ int main(void)
 	  //получение статуса полива
 	  if(error_code==0){
 		  if(HAL_GPIO_ReadPin(GPIOC,valve_Pin)==GPIO_PIN_SET){//
-			  mainmenu.line4="Poliv_ON";
+			  //mainmenu.line4="Poliv_ON,";
+			  snprintf(data_str, 63, "Poliv_ON_%d",polivcomlete_flag );
+			  mainmenu.line4=data_str;
 		  }else{
-			  mainmenu.line4="Poliv_OFF,OK";
+			  //mainmenu.line4="Poliv_OFF,OK";
+			  snprintf(data_str, 63, "Poliv_OFF_%d",polivcomlete_flag );
+			  mainmenu.line4=data_str;
 		  }
 	  }else{
 		 // snprintf(data_str, 63, " %d-%d-20%d\n", DateToUpdate.Date, DateToUpdate.Month, DateToUpdate.Year);
@@ -902,7 +1413,8 @@ int main(void)
 	  update_LCD(&mainmenu);
 	  //Организация полива в автомате
 	  //текущий режим при достижении 18-00 включить на 8 мин
-	  sostoyaniepoliva=autoRegim(vkluchitna_min,polivcomlete_flag); //заходим в функцию
+
+	  sostoyaniepoliva=autoRegim(interval_autoregMin,pereriv_intervalMinforauto,polivcomlete_flag,hoursstartpolivavto,minutstartpolivavto); //заходим в функцию даем сколько мин поливать и флаг поливали сегодня или нет
 	  if(sostoyaniepoliva==1){  //
 		  polivcomlete_flag=1;      //ставим флаг что полив произведен поливать больше не надо
 		   }else if(sostoyaniepoliva==3){
@@ -973,7 +1485,77 @@ int main(void)
 		   	   soberiMenu231(metka);
 		   	   update_LCD(metka);
 	  	  	  }
-
+     //вход в 2.3.1.1     //Установка мин для полива в Холодный день
+	   if(level_menu==2311){
+		   holodny_periodmin=setHolod2311(holodny_periodmin);   //заходим в функцию устанвоки мин холодного периода полива
+		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   }
+	   //вход в 2.3.1.2  //установка мин для полива в Жаркий день
+	   if(level_menu==2312){
+		   garky_periodmin=setHolod2311(garky_periodmin);   //заходим в функцию устанвоки мин холодного периода полива
+		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   }
+	   //вход в 2.3.2.0  //Установка сколько мин поливать в атоматическом режиме без температуры
+	   if(level_menu==2320){
+	   		   	   soberiMenu2320(metka);
+	   		   	   update_LCD(metka);
+	   	  	  	  }
+	   //Вход в 2.3.2.1.   //установка мин для полива в автоматическом режиме без температуры
+	   if(level_menu==2321){
+		   interval_autoregMin=setHolod2311(interval_autoregMin);   //заходим в функцию устанвоки мин холодного периода полива
+	   		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   	   }
+	   //Вход в 2.3.2.1.   //установка мин интервала затишья в автоматическом режиме без температуры
+	   	   if(level_menu==2322){
+	   		pereriv_intervalMinforauto=setHolod2311(pereriv_intervalMinforauto);   //заходим в функцию устанвоки мин холодного периода полива
+	   	   		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   	   	   }
+	   //Вход в 2.3.2.3	 //Установка часов установка времени старта общее меню
+	   	if(level_menu==2323){
+	   				soberiMenu2323(metka);
+	   		  	    update_LCD(metka);
+	   	}
+	   	//Вход в 2.3.2.3.1.   //Установка времени системы
+	   	if(level_menu==23231){
+	   			soberiMenu23231(metka);
+	   			update_LCD(metka);
+	   	}
+		//Вход в 2.3.2.3.2.   //Установка времени старта полива
+	   	if(level_menu==23232){
+	   		   			soberiMenu23232(metka);
+	   		   			update_LCD(metka);
+	   		   	}
+        //Вход в 23236  время старта полива //измениение текущего часа
+	   	if(level_menu==23236){
+	   		hoursstartpolivavto=setHoursmethod(hoursstartpolivavto);
+	   		level_menu=2323;
+	   	}
+	   	////Вход в 23237  время старта полива //измениение текущего значения минут
+	   	if(level_menu==23237){
+	   		minutstartpolivavto=setMinutsmethod(minutstartpolivavto);
+	   		level_menu=2323;
+	   	}
+	   	//Вход в 23234 для установки часов системного времени
+	   	if(level_menu==23234){
+	   				hours_systemtime=sTime.Hours;  // сохраняем в переменную  текущее значение часа
+	   		   		hours_systemtime=setHoursmethod(hours_systemtime); //заходим в функцию изменения количества часов ручками ставим сколько надо
+	   		   		minut_systemtime=sTime.Minutes; //обнолявляем минуты в переменной
+	   		   		MX_RTC_Init2(hours_systemtime,minut_systemtime);//инициализируем системное время
+	   		   		level_menu=2323;
+	   		   	}
+	   	//Вход в 23235 для установки минут системного времени
+	   	if(level_menu==23235){
+	   						minut_systemtime=sTime.Minutes; // сохраняем в переменную  текущее значение минут
+	   						minut_systemtime=setMinutsmethod(minut_systemtime); //заходим в функцию изменения количества минут ручками ставим сколько надо
+	   		   		   		hours_systemtime=sTime.Hours; //обнолявляем минуты в переменной
+	   		   		   		MX_RTC_Init2(hours_systemtime,minut_systemtime);//инициализируем системное время
+	   		   		   		level_menu=2323;
+	   		   		   	}
+	   	//Вход в 23233 Просмотр параметров автополива
+	   	if(level_menu==23233){
+	   		soberiMenu23233(hoursstartpolivavto,minutstartpolivavto,interval_autoregMin,pereriv_intervalMinforauto);
+	   		level_menu=2323;
+	   	}
  //--------------------------------------------------------------------------------------------------------------
     /* USER CODE END WHILE */
 
