@@ -27,6 +27,8 @@
 #include "ssd1306_tests.h"
 #include "ds18b20.h"
 #include "math.h"
+#include "FlashPROM.h"  //подключение библиотеки для работы с памятью
+
 #define Black 0x00
 #define White 0x01
 #define srartchasov  12
@@ -58,6 +60,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 RTC_HandleTypeDef hrtc;
 
 SPI_HandleTypeDef hspi1;
@@ -70,6 +74,7 @@ char trans_str[64] = {0,};
 char data_str[64]={0,};
 uint32_t adcResult = 0;   //переменная для считывания реультатов измерения
 char str1[60];                //для ds18b20
+uint32_t res_addr = 0;  //адрес для записи во флэш
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,15 +82,35 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_RTC_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
-
+void LEDmi(uint8_t statuslight);
+void Poliv(uint8_t status);
+void LedVisionwrite(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
 
-//--------------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------------
+//функция для визуального отображения входа в режим записи в flash память для тестировани
+void LedVisionwrite(){
+	uint8_t m=5;
+	uint16_t t1=150;
+
+
+	while(m>0){
+				 HAL_GPIO_WritePin(GPIOC,LED1_Pin,GPIO_PIN_SET);
+				 HAL_Delay(t1);
+				 HAL_GPIO_WritePin(GPIOC,LED1_Pin,GPIO_PIN_RESET);
+				 HAL_Delay(t1);
+			m--;
+		}
+}
+//-----------------------------------------------------------------------------------
 //функция установки часов
 static void MX_RTC_Init2(uint8_t hoursmi,uint8_t minmi)
 {
@@ -139,6 +164,19 @@ static void MX_RTC_Init2(uint8_t hoursmi,uint8_t minmi)
 
 }
 //---------------------------------------------------------------------------------
+struct savedatatime
+{        //создана для хранения и записи в память занчений приотключении питания
+	uint8_t hourssystem;      //поле для хранения занчения часа
+	uint8_t minsystem;        //занчение для харнения минуты
+	//uint16_t timesistem;      //обединенное 16бит занчение часа и минуты старта
+	uint16_t erasetstus;       //для хранения занчения 0x1111  - занчит функцию eraseflsh не запускать
+	uint8_t hoursstart;       // занчение для хранения часа старта полива
+	uint8_t minstart;         //значение для хранения минуты старта
+	uint16_t timestart;        //обединенное значение часа и минуты старта
+	uint16_t podacha;          //длина подачи
+	uint16_t pereriv;           //длина переыва
+};
+//------------------------------------------------------------------------------------
 //структура для инициализации меню на дисплее
 struct current_line
 {
@@ -149,6 +187,41 @@ struct current_line
 };
 
 //---------------------------------------------------------
+//функция которая записывает новые парметры в память для восстанволения
+void needNowsave(struct savedatatime *data_old, myBuf_t wdata[BUFFSIZE]){
+
+	     data_old->timestart=data_old->hoursstart<<8|data_old->minstart;
+	     wdata[1]=data_old->timestart;
+	     wdata[2]=data_old->podacha;
+	     wdata[3]=data_old->pereriv;
+		 // MSByte=255;
+		 // LSByte=32;
+		 // MSBLSB=MSByte<<8|LSByte;
+
+	     	 	 	 	 	 	 //wdata[0]=MSBLSB;
+		                          // wdata[0] = wdata[0] + 1; // просто для разнообразия
+		                        //   wdata[1] = wdata[1] + 1;
+		                        //   wdata[2] = wdata[2] + 1;
+		                         //  wdata[3] = wdata[3] + 1;
+	     	 	 	 	 	 	   LedVisionwrite();
+		                           write_to_flash(wdata); // запись данных во флеш
+
+}
+//--------------------------------------------------------------------------------
+//функция чтения переменных вренмени из памяти после старта
+
+void getNewstartprogramm(struct savedatatime *datanew ){
+	myBuf_t rdata[BUFFSIZE] = {0,}; // буфер для чтения (не обязательно его создавать, можно использовать буфер для записи)
+
+	read_last_data_in_flash(rdata); // чтение данных из флеша
+	//datanew->hourssystem =(uint8_t)(rdata[0] >> 8);  //старший байт  знаение часа
+	//datanew->minsystem=(uint8_t)rdata[0];        //млдаший байт  значение минуты
+	datanew->erasetstus=rdata[0];    //сохраняем для идентификации erase
+	datanew->hoursstart=(uint8_t)(rdata[1] >> 8);//старший байт  знаение часа  полива
+	datanew->minstart=(uint8_t)rdata[1];         //млдаший байт  значение минуты полива
+	datanew->podacha=rdata[2];     //длина полива
+	datanew->pereriv=rdata[3];     //время перекура
+}
 //функиця обновления дисплея
 void update_LCD(struct current_line *setline){
 	//HAL_Delay(100);
@@ -172,10 +245,10 @@ void update_LCD(struct current_line *setline){
 //Если ничего не нажато то возврат 0
 uint8_t press_Button(){
 	uint8_t code;
-	uint32_t time;
-	uint32_t limit=100;
-	uint32_t press_count=200000;
-	time=0;
+	//uint32_t time;
+	//uint32_t limit=100;
+	//uint32_t press_count=200000;
+	//time=0;
 	code=0;
 
         //для первой кнопки
@@ -395,6 +468,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 	 uint8_t minstart;     //время старта
 	 uint8_t secstart;
 	 uint16_t allsecstart;   //абсолютное время старта в секундах
+	 uint16_t popravka00;    //при перешагивании через ноль мин когда сменяется час добавляем к seccurrent
 	 uint16_t timer_vision;  //обратный отсчет
 	 uint8_t mincurrent;   //текущие показания времени
 	 uint8_t seccurrent;
@@ -402,9 +476,10 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 	 char intervalchar[12];   //тестовая для вывода
 	 char kolchar[12];
 	 uint8_t kolvovklucheny;  //сколько раз включить в зависимости от общего времени и перерыва
+	 uint8_t kolvovkluchenyishodnoe;  //для записи сколько все раз включали
 	 float kolvovkluchfloat;       //промежуточный вариант колва включений не округленный
 	 uint8_t periodOnflag;    //флаг когда период нужно включить  1- полив 0 перекур
-
+	 uint8_t flag_popravku=0;      //флаг перерасчетов 00мин
 	  //заходим функцию проверяем время если наступило 18-00 то включаем полив и крутимся здесь
 	  //по окончании ставим флаг полива на сегодня
 
@@ -413,6 +488,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 		  if(sTime.Minutes==minutstartpolivavto){  //если наступило 00 мин
 			  if(flagpolivcomplete==0){   //если еще не поливали то приступаем к поливу
 				  Poliv(ON);  //включаем полив
+				  LEDmi(ON);//Включить светодиод
 
 				  //intervalzadan=intervalmin*60;  //переводим заданный интервал из мин в секунды
 
@@ -420,9 +496,11 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 				  periodOnflag=1;    //ставим флаг для первой половины полива
 				  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 				  //сохраняем время начала полива те во столько то мин-сек полив стартует
+
 				  minstart=sTime.Minutes;
 				  secstart=sTime.Seconds;
 				  allsecstart=secstart+minstart*60; //переводим в секунды
+				  popravka00=3600;
 				  //allsecstart=allsecstart+intervalzadan;
 
 				  //вычиляем сколько раз надо прерваться на прерыв или сколько раз полить
@@ -436,7 +514,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 
 				  }
 				  snprintf(kolchar,11,"%d_raz",kolvovklucheny);
-
+				  kolvovkluchenyishodnoe=kolvovklucheny;
 				  intervalzadan=pereriv_megdupolivami;//вычисляем длину короткого интервала В мин
 				  intervalzadan=intervalzadan*60; //переводим в секунды
 
@@ -453,10 +531,21 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 							  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 							  mincurrent=sTime.Minutes;
 							  seccurrent=sTime.Seconds;
-							  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+							  if(seccurrent==0){
+							  if((mincurrent==0)&&(flag_popravku==0)){  //если перешагиваем границу часа 00мин то считаем по другому
+								  flag_popravku=1;
+							  }
+							  }
+							  if(flag_popravku==1){
+								  allseccurrent=seccurrent+mincurrent*60+popravka00;
+							  }else{
+								  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+
+							  }
+							 // allseccurrent=seccurrent+mincurrent*60+popravka00; //переводим из мин и сек текущее время в секунды
 							  timer_vision=allsecstart+intervalzadan-allseccurrent;//обратный отсчет для дисплея
 							  snprintf(intervalchar,11,"%d_%d",timer_vision,intervalzadan);
-							  snprintf(kolchar,11,"%d_raz",kolvovklucheny);
+							  snprintf(kolchar,11,"%d_iz_%d",(kolvovkluchenyishodnoe-kolvovklucheny+1),kolvovkluchenyishodnoe);
 							  if((allsecstart+intervalzadan)<=allseccurrent){//когда заданный интервал исчерпан
 								  //то
 								  periodOnflag=0; //говорим что все полилось втекущем периоде все окей
@@ -484,6 +573,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 							  HAL_Delay(1000);
 						  }
 						  Poliv(OFF); //выключаем полив
+						  LEDmi(OFF);//Выключить светодиод
 						  allsecstart=allsecstart+intervalzadan; //переносим время старта для следующего промежутка
 						  kolvovklucheny--;
 						  //ssd1306_Fill(Black);
@@ -494,7 +584,15 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 							  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 							  mincurrent=sTime.Minutes;
 							  seccurrent=sTime.Seconds;
-							  allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+							  if((mincurrent==0)&&(flag_popravku==0)){  //если перешагиваем границу часа 00мин то считаем по другому
+							  								  flag_popravku=1;
+							  }
+							   if(flag_popravku==1){
+							  		allseccurrent=seccurrent+mincurrent*60+popravka00;
+							  	}else{
+							  		allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
+							    }
+							  //allseccurrent=seccurrent+mincurrent*60; //переводим из мин и сек текущее время в секунды
 							  if((allsecstart+intervalzadan)<=allseccurrent){
 								  periodOnflag=1;  //перебрасываем флаг что нужно снова включать
 							  }
@@ -527,6 +625,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 						  if((flagstart!=3)&&(kolvovklucheny!=0)){
 							  allsecstart=allsecstart+intervalzadan; //переносим время старта для следующего промежутка
 							  Poliv(ON);  //включаем полив
+							  LEDmi(ON);
 						  }else if(kolvovklucheny==0){   //  если количество включений пришло к нулю
 							  flagstart=2;  //сбрасываем флаг и выходим из функции автополива
 						  }
@@ -539,6 +638,7 @@ uint8_t autoRegim(uint16_t intervalmin,uint16_t pereriv_megdupolivami,uint8_t fl
 				  }
 				  //от while-------------------------
 				  Poliv(OFF); //выключаем полив
+				  LEDmi(OFF);
 				  //пишем на дисплей
 				  ssd1306_Fill(Black);
 				  ssd1306_SetCursor(0,0);
@@ -581,6 +681,7 @@ void action_Valve(){
 	lastsec=sTime.Seconds;
 	startt=lastsec;
 	Poliv(ON);//включаем полив
+	LEDmi(ON);
 	while(HAL_GPIO_ReadPin(GPIOB,second_button_Pin)==GPIO_PIN_RESET){//пока нажат кнопка 2 активен режим ручного включения
 		HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
 		secun=sTime.Seconds;
@@ -602,6 +703,7 @@ void action_Valve(){
 
 	}
 	Poliv(OFF);//выключаем полив при выходе
+	LEDmi(OFF);
 }
 //---------------------------------------------------------------------------------
 //Функция включения клапана полива
@@ -611,6 +713,15 @@ void Poliv(uint8_t status){  //на вход подается  статус что нужно вкл или выключ
 	}
 	if(status==0){
 		HAL_GPIO_WritePin(GPIOC,valve_Pin,GPIO_PIN_RESET);
+	}
+}
+//---------------------------------------------------------------------------------
+void LEDmi(uint8_t statuslight){
+	if(statuslight==1){
+		HAL_GPIO_WritePin(GPIOC,LED1_Pin,GPIO_PIN_SET);
+	}
+	if(statuslight==0){
+		HAL_GPIO_WritePin(GPIOC,LED1_Pin,GPIO_PIN_RESET);
 	}
 }
 //---------------------------------------------------------------------------------
@@ -634,6 +745,7 @@ void action_Valvetotime(uint8_t timeact){
 	secund=secund_interval;
 	lastsecund=startsec;
 	Poliv(ON);          //включаем полив
+	LEDmi(ON);
 	while(secund>1){    //запускаем  обратный таймер
        // HAL_Delay(1000);
 		HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //запрос времени
@@ -664,6 +776,7 @@ void action_Valvetotime(uint8_t timeact){
 
 	}
 	Poliv(OFF);          //выключаем полив после выхода из петли расчета времени
+	LEDmi(OFF);
 	    //пишем что клапан выключен
 				ssd1306_SetCursor(0,0);
 				ssd1306_WriteString(intreval,Font_11x18,White);
@@ -942,6 +1055,7 @@ void soberiMenu23233(uint8_t hour,uint8_t min,uint16_t timeperiodOn,uint16_t per
 }
 //--------------------------------------------------------------------------------------
 void soberiMenu23232(struct current_line *setline){
+
 		setline->line1="Hours  ";
 		setline->line2="Min  ";
 		setline->line3="----------";
@@ -1024,7 +1138,8 @@ void migni(uint8_t count_blink,uint16_t time_action,uint16_t time_sleep){
 //-----------------------------------------------------------------------------
 void startBlinkLed(){
 	//функция запуска светодиода при старте
-	uint8_t m,n,t1,t2,t3;
+	uint8_t m,n,t1,t2;
+	uint16_t t3;
 	m=4;
 	n=5;
 	t1=50;
@@ -1109,22 +1224,22 @@ void blinktext(){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	char *textMainmenu[4]={">  Set1     ",">  Set2",">  Set3",">  Set3"};
-    char *buildMainmenu[4]={"Time","Time_D","Temp_25C","Status_OFF"};
-    char *buildmenu2[4]={"Ruchnoy t","Ruchnoy","Ustanovki","Otmena"};
-    char *buildmenu={"s","s","s","s"};
+	//char *textMainmenu[4]={">  Set1     ",">  Set2",">  Set3",">  Set3"};
+   // char *buildMainmenu[4]={"Time","Time_D","Temp_25C","Status_OFF"};
+   // char *buildmenu2[4]={"Ruchnoy t","Ruchnoy","Ustanovki","Otmena"};
+    //char *buildmenu={"s","s","s","s"};
     uint8_t error_code=0;   //таблица кодов ошибок  0- нет ошибок 1-есть ошибка какаято
-    float Upitanija=3.195;       //для расчета напряжения ацп
-    uint16_t razradnostAcp=4096;    //разрядность ацп
-    float udatchika_temp=0;   //напряжение на входе с датчика температуры  tmp36gz
-    uint16_t Udispint=0;
-    float ktmp36gz=34.78; //коэффициент датчика температуры
-    float temp=0;    //темепратура с датчика
-    uint8_t status;      //для ds18b20
-    uint8_t dt[8];      //для ds18b20
-    uint16_t raw_temper;   //для ds18b20
-    float temper;        //для ds18b20
-    char c;
+   // float Upitanija=3.195;       //для расчета напряжения ацп
+   // uint16_t razradnostAcp=4096;    //разрядность ацп
+  //  float udatchika_temp=0;   //напряжение на входе с датчика температуры  tmp36gz
+   // uint16_t Udispint=0;
+   // float ktmp36gz=34.78; //коэффициент датчика температуры
+ //   float temp=0;    //темепратура с датчика
+  //  uint8_t status;      //для ds18b20
+  //  uint8_t dt[8];      //для ds18b20
+  //  uint16_t raw_temper;   //для ds18b20
+   // float temper;        //для ds18b20
+  //  char c;
     uint8_t state_button;   //статус нажатия кнопок  1- нажата кн1 2 -нажата кн2 3 нажата кн3 4 нажата кн4 0- не нажата кн
     uint16_t level_menu;     //уровень меню отображаемый на LCD 10(1.0) меню по умолчанию
                                             //  20(2.0) меню
@@ -1142,7 +1257,8 @@ int main(void)
 	 uint8_t minutstartpolivavto=10;    //мин
 	 uint8_t hours_systemtime;    //переменная для утсановки системного времени
 	 uint8_t minut_systemtime;    //переменная для установки системного времени
-     /* USER CODE END 1 */
+	 uint8_t flag_savedata=0;   //флаг для указания что нужно сохранить параметры в память
+  /* USER CODE END 1 */
   
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -1165,6 +1281,7 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_RTC_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   startBlinkLed();
   ssd1306_Init();
@@ -1190,7 +1307,7 @@ int main(void)
   //ssd1306_TestFonts();
   //Создание первого меню дисплея
   struct current_line mainmenu;
-
+  struct savedatatime dataSaveparametrs ;   //обьявление структуры для хранения параметров аварийного сохранения и восстановления
   mainmenu.line1="> set1";
   mainmenu.line2="  set2";
   mainmenu.line3="  set3";
@@ -1198,8 +1315,24 @@ int main(void)
 
   update_LCD(&mainmenu);
 
-  port_init();  //инициализация ноги для DS18B20 Порт А вход 3
+  //port_init();  //инициализация ноги для DS18B20 Порт А вход 3
   level_menu=10; //уровень отображения меню -по умолчанию
+  //erase_flash();    //подготовка и очистка памяти для записи параметров восстановления закомментировать после первой прошивки
+  res_addr = flash_search_adress(STARTADDR, BUFFSIZE * DATAWIDTH);   //
+  myBuf_t wdata[BUFFSIZE] = {0x1111, 0x2222, 0x3333, 0x4444, 0x0000};
+  getNewstartprogramm(&dataSaveparametrs);  //восстанавливаем значения после старта
+  if(dataSaveparametrs.erasetstus!=0x1111){  //если запуск первый то стираем память под буфер хранения
+	  erase_flash();
+  }else{
+	  //обновление переменных времени из полученной структуры данных
+	    hoursstartpolivavto=dataSaveparametrs.hoursstart;
+	    minutstartpolivavto=dataSaveparametrs.minstart;
+	    interval_autoregMin=dataSaveparametrs.podacha;
+	    pereriv_intervalMinforauto=dataSaveparametrs.pereriv;
+	    //
+  }
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -1504,11 +1637,13 @@ int main(void)
 	   if(level_menu==2321){
 		   interval_autoregMin=setHolod2311(interval_autoregMin);   //заходим в функцию устанвоки мин холодного периода полива
 	   		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   		   flag_savedata=1;   //взводим флаг пересохраниться
 	   	   }
 	   //Вход в 2.3.2.1.   //установка мин интервала затишья в автоматическом режиме без температуры
 	   	   if(level_menu==2322){
 	   		pereriv_intervalMinforauto=setHolod2311(pereriv_intervalMinforauto);   //заходим в функцию устанвоки мин холодного периода полива
 	   	   		   level_menu=231;  // возврращаемся в меню утсанвоков
+	   	   		   flag_savedata=1;   //взводим флаг пересохраниться
 	   	   	   }
 	   //Вход в 2.3.2.3	 //Установка часов установка времени старта общее меню
 	   	if(level_menu==2323){
@@ -1529,11 +1664,13 @@ int main(void)
 	   	if(level_menu==23236){
 	   		hoursstartpolivavto=setHoursmethod(hoursstartpolivavto);
 	   		level_menu=2323;
+	   		flag_savedata=1;   //взводим флаг пересохраниться
 	   	}
 	   	////Вход в 23237  время старта полива //измениение текущего значения минут
 	   	if(level_menu==23237){
 	   		minutstartpolivavto=setMinutsmethod(minutstartpolivavto);
 	   		level_menu=2323;
+	   		flag_savedata=1;   //взводим флаг пересохраниться
 	   	}
 	   	//Вход в 23234 для установки часов системного времени
 	   	if(level_menu==23234){
@@ -1555,6 +1692,16 @@ int main(void)
 	   	if(level_menu==23233){
 	   		soberiMenu23233(hoursstartpolivavto,minutstartpolivavto,interval_autoregMin,pereriv_intervalMinforauto);
 	   		level_menu=2323;
+	   	}
+	   	//если взведен флаг пересохраниться то записываем данные впамять на случай отключения питания
+	   	if(flag_savedata==1){
+	   		//собираем какие парметры нужно пересохранить
+	   		dataSaveparametrs.hoursstart=hoursstartpolivavto;
+	   		dataSaveparametrs.minstart=minutstartpolivavto;
+	   		dataSaveparametrs.podacha=interval_autoregMin;
+	   		dataSaveparametrs.pereriv=pereriv_intervalMinforauto;
+	   		needNowsave(&dataSaveparametrs,wdata);
+	   		flag_savedata=0;   //сбрасываем флаг пересохраниться
 	   	}
  //--------------------------------------------------------------------------------------------------------------
     /* USER CODE END WHILE */
@@ -1607,6 +1754,32 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
+}
+
+/**
   * @brief RTC Initialization Function
   * @param None
   * @retval None
@@ -1618,8 +1791,8 @@ static void MX_RTC_Init(void)
 
   /* USER CODE END RTC_Init 0 */
 
-  //RTC_TimeTypeDef sTime = {0};
- // RTC_DateTypeDef DateToUpdate = {0};
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef DateToUpdate = {0};
 
   /* USER CODE BEGIN RTC_Init 1 */
 //--------------------------------------------------------------------------------------
@@ -1643,7 +1816,7 @@ static void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
-    
+
   /* USER CODE END Check_RTC_BKUP */
 
   /** Initialize RTC and set the Time and Date 
@@ -1661,9 +1834,9 @@ static void MX_RTC_Init(void)
   DateToUpdate.Date = 11;
   DateToUpdate.Year = 20;
 
- // if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK)
- // {
- //   Error_Handler();
+  //if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK)
+  //{
+  //  Error_Handler();
  // }
   /* USER CODE BEGIN RTC_Init 2 */
 

@@ -17,6 +17,7 @@ Src/system_stm32f1xx.o: ../Src/system_stm32f1xx.c \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h \
+ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_crc.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h \
@@ -59,6 +60,8 @@ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1x
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h:
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h:
+
+C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_crc.h:
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h:
 

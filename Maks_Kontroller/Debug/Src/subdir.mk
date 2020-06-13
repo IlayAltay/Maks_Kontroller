@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Src/FlashPROM.c \
 ../Src/ds18b20.c \
 ../Src/main.c \
 ../Src/ssd1306.c \
@@ -15,6 +16,7 @@ C_SRCS += \
 ../Src/system_stm32f1xx.c 
 
 OBJS += \
+./Src/FlashPROM.o \
 ./Src/ds18b20.o \
 ./Src/main.o \
 ./Src/ssd1306.o \
@@ -26,6 +28,7 @@ OBJS += \
 ./Src/system_stm32f1xx.o 
 
 C_DEPS += \
+./Src/FlashPROM.d \
 ./Src/ds18b20.d \
 ./Src/main.d \
 ./Src/ssd1306.d \

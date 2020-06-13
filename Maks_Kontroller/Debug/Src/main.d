@@ -18,6 +18,7 @@ Src/main.o: ../Src/main.c \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h \
+ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_crc.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h \
@@ -31,7 +32,8 @@ Src/main.o: ../Src/main.c \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ds18b20.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ssd1306.h \
  C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ssd1306_tests.h \
- C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ds18b20.h
+ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ds18b20.h \
+ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/FlashPROM.h
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/main.h:
 
@@ -71,6 +73,8 @@ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1x
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h:
 
+C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_crc.h:
+
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h:
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h:
@@ -98,3 +102,5 @@ C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ssd1306.h:
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ssd1306_tests.h:
 
 C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/ds18b20.h:
+
+C:/Users/IlPC/Desktop/workspace/Maks_Kontroller/Maks_Kontroller/Inc/FlashPROM.h:
