@@ -208,6 +208,42 @@ void needNowsave(struct savedatatime *data_old, myBuf_t wdata[BUFFSIZE]){
 
 }
 //--------------------------------------------------------------------------------
+//Функция получения температуры
+float getTemperature(){
+	uint8_t dt[8];      //для ds18b20
+	uint16_t raw_temper;   //для ds18b20
+	float temper;        //для ds18b20
+	char c;				//для ds18b20
+	uint8_t temrez;	      //ds18b20
+
+
+	ds18b20_MeasureTemperCmd(SKIP_ROM, 0);
+	HAL_Delay(800);
+	ds18b20_ReadStratcpad(SKIP_ROM, dt, 0);
+	//snprintf(str1,60,"%02X %02X %02X %02X ",
+	//  			  dt[0], dt[1], dt[2], dt[3]);
+	//ssd1306_Fill(Black);
+	//ssd1306_SetCursor(0,0);
+	//ssd1306_WriteString(str1,Font_11x18,White);
+	//snprintf(str1,60,"%02X %02X %02X %02X; ",
+	//	  	  	   dt[4], dt[5], dt[6], dt[7]);
+	//ssd1306_SetCursor(0,15);
+	//ssd1306_WriteString(str1,Font_11x18,White);
+		  	  //ssd1306_UpdateScreen();
+	raw_temper = ((uint16_t)dt[1]<<8)|dt[0];
+	if(ds18b20_GetSign(raw_temper)) c='-';
+		  		  else c='+';
+	temper = ds18b20_Convert(raw_temper);
+	//temrez=(uint8_t)(floor(temper*10));
+	//snprintf(str1,60,"%c%d.%d'C",c, ((uint8_t)(floor(temper))),temrez%10);
+	//ssd1306_SetCursor(0,45);
+	//ssd1306_WriteString(str1,Font_11x18,White);
+	//ssd1306_UpdateScreen();
+	//HAL_Delay(1500);
+
+	return temper;
+}
+//------------------------------------------------------------------------------------
 //функция чтения переменных вренмени из памяти после старта
 
 void getNewstartprogramm(struct savedatatime *datanew ){
@@ -1235,11 +1271,13 @@ int main(void)
    // uint16_t Udispint=0;
    // float ktmp36gz=34.78; //коэффициент датчика температуры
  //   float temp=0;    //темепратура с датчика
-  //  uint8_t status;      //для ds18b20
-  //  uint8_t dt[8];      //для ds18b20
-  //  uint16_t raw_temper;   //для ds18b20
-   // float temper;        //для ds18b20
-  //  char c;
+    uint8_t status;      //для ds18b20
+    uint8_t dt[8];      //для ds18b20
+    uint16_t raw_temper;   //для ds18b20
+    float temper;        //для ds18b20
+    char c;				//для ds18b20
+    uint16_t temrez;	      //ds18b20
+
     uint8_t state_button;   //статус нажатия кнопок  1- нажата кн1 2 -нажата кн2 3 нажата кн3 4 нажата кн4 0- не нажата кн
     uint16_t level_menu;     //уровень меню отображаемый на LCD 10(1.0) меню по умолчанию
                                             //  20(2.0) меню
@@ -1258,7 +1296,8 @@ int main(void)
 	 uint8_t hours_systemtime;    //переменная для утсановки системного времени
 	 uint8_t minut_systemtime;    //переменная для установки системного времени
 	 uint8_t flag_savedata=0;   //флаг для указания что нужно сохранить параметры в память
-  /* USER CODE END 1 */
+	 uint8_t countfortemperatur=0;  //счетчик
+	 /* USER CODE END 1 */
   
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -1283,13 +1322,13 @@ int main(void)
   MX_RTC_Init();
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
-  startBlinkLed();
+  //startBlinkLed();
   ssd1306_Init();
   //HAL_Delay(3000);
   //startBlinkLed();
   ssd1306_Fill(White);
   ssd1306_UpdateScreen();
-  startBlinkLed();
+// startBlinkLed();
  // ssd1306_Fill(White);
   //ssd1306_UpdateScreen();
  // HAL_Delay(3000);
@@ -1315,7 +1354,10 @@ int main(void)
 
   update_LCD(&mainmenu);
 
-  //port_init();  //инициализация ноги для DS18B20 Порт А вход 3
+  port_init();  //инициализация ноги для DS18B20 Порт А вход 3
+  status=ds18b20_init(SKIP_ROM);   //возврат статуса инициализации датчика темпертатуры
+  snprintf(str1,60,"_%d",status);
+
   level_menu=10; //уровень отображения меню -по умолчанию
   //erase_flash();    //подготовка и очистка памяти для записи параметров восстановления закомментировать после первой прошивки
   res_addr = flash_search_adress(STARTADDR, BUFFSIZE * DATAWIDTH);   //
@@ -1339,6 +1381,32 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	    //получениние температуры
+	  	  /*
+	  	  ds18b20_MeasureTemperCmd(SKIP_ROM, 0);
+	  	  HAL_Delay(800);
+	  	  ds18b20_ReadStratcpad(SKIP_ROM, dt, 0);
+	  	  snprintf(str1,60,"%02X %02X %02X %02X ",
+	  			  dt[0], dt[1], dt[2], dt[3]);
+	  	  ssd1306_Fill(Black);
+	  	  ssd1306_SetCursor(0,0);
+	  	  ssd1306_WriteString(str1,Font_11x18,White);
+	  	  snprintf(str1,60,"%02X %02X %02X %02X; ",
+	  	  	   dt[4], dt[5], dt[6], dt[7]);
+	  	  ssd1306_SetCursor(0,15);
+	  	  ssd1306_WriteString(str1,Font_11x18,White);
+	  	  //ssd1306_UpdateScreen();
+	  	  raw_temper = ((uint16_t)dt[1]<<8)|dt[0];
+	  	  if(ds18b20_GetSign(raw_temper)) c='-';
+	  		  else c='+';
+	  	  temper = ds18b20_Convert(raw_temper);
+	  	  temrez=(uint8_t)(floor(temper*10));
+	  	  snprintf(str1,60,"%c%d.%d'C",c, ((uint8_t)(floor(temper))),temrez%10);
+	  	  ssd1306_SetCursor(0,45);
+	  	  ssd1306_WriteString(str1,Font_11x18,White);
+	  	  ssd1306_UpdateScreen();
+	  	  HAL_Delay(1500);
+           */
 	     //в жаркий день распылителем 30 мин
 	     //в холодный мин 15 - 10 мин
 	     //-------------------------------------
@@ -1489,9 +1557,17 @@ int main(void)
 	  //mainmenu.line2=what_Time_ofday(sTime.Hours);
 	  //update_LCD(mainmenu);
 
-	  //получение показаний датчика температуры
+	  if(abs(sTime.Seconds-countfortemperatur)>5){   //измеряем раз в 5сек
+		  countfortemperatur=sTime.Seconds;
 
-	  mainmenu.line3="T'C_23.8C";
+      c='+';
+	  //получение показаний датчика температуры
+	  temper=getTemperature();
+	  temrez=(uint16_t)(floor(temper*10));
+	  snprintf(str1,60,"%c%d.%d'C",c, ((uint8_t)(floor(temper))),temrez%10);
+	  mainmenu.line3=str1;
+
+	  }
 /*	  код тестовый удалить
 	  ds18b20_MeasureTemperCmd(SKIP_ROM, 0);
 	  HAL_Delay(800);
@@ -1902,10 +1978,12 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, LED1_Pin|valve_Pin, GPIO_PIN_RESET);
 
+
   /*Configure GPIO pin : temperatura_Pin */
   GPIO_InitStruct.Pin = temperatura_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode =  GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(temperatura_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : fourth_button_Pin */

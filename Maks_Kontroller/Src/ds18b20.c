@@ -3,7 +3,7 @@
 __STATIC_INLINE void DelayMicro(__IO uint32_t micros)
 {
 //micros *= (SystemCoreClock / 1000000) / 9;
-micros *= (SystemCoreClock / 1000000)/8 ;
+micros *= (SystemCoreClock / 1000000)/3;
 /* Wait till done */
 while (micros--) ;
 }
@@ -11,19 +11,20 @@ while (micros--) ;
 void port_init(void)
 {
   HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-  GPIOA->CRH |= GPIO_CRH_MODE11;
-  GPIOA->CRH |= GPIO_CRH_CNF11_0;
-  GPIOA->CRH &= ~GPIO_CRH_CNF11_1;
+
+  GPIOA->CRL |= GPIO_CRL_MODE3;
+  GPIOA->CRL |= GPIO_CRL_CNF3_0;
+  GPIOA->CRL &= ~GPIO_CRL_CNF3_1;
 }
 //--------------------------------------------------
 uint8_t ds18b20_Reset(void)
 {
   uint16_t status;
-	GPIOA->ODR &= ~GPIO_ODR_ODR11;//низкий уровень
+  GPIOA->ODR &= ~GPIO_ODR_ODR3;//низкий уровень
   DelayMicro(485);//задержка как минимум на 480 микросекунд
-  GPIOA->ODR |= GPIO_ODR_ODR11;//высокий уровень
+  GPIOA->ODR |= GPIO_ODR_ODR3;//высокий уровень
   DelayMicro(65);//задержка как минимум на 60 микросекунд
-  status = GPIOA->IDR & GPIO_IDR_IDR11;//проверяем уровень
+  status = GPIOA->IDR & GPIO_IDR_IDR3;//проверяем уровень
   DelayMicro(500);//задержка как минимум на 480 микросекунд
   //(на всякий случай подождём побольше, так как могут быть неточности в задержке)
   return (status ? 1 : 0);//вернём результат
@@ -32,11 +33,11 @@ uint8_t ds18b20_Reset(void)
 uint8_t ds18b20_ReadBit(void)
 {
   uint8_t bit = 0;
-  GPIOA->ODR &= ~GPIO_ODR_ODR11;//низкий уровень
+  GPIOA->ODR &= ~GPIO_ODR_ODR3;//низкий уровень
   DelayMicro(2);
-	GPIOA->ODR |= GPIO_ODR_ODR11;//высокий уровень
+	GPIOA->ODR |= GPIO_ODR_ODR3;//высокий уровень
 	DelayMicro(13);
-	bit = (GPIOA->IDR & GPIO_IDR_IDR11 ? 1 : 0);//проверяем уровень
+	bit = (GPIOA->IDR & GPIO_IDR_IDR3 ? 1 : 0);//проверяем уровень
 	DelayMicro(45);
   return bit;
 }
@@ -51,9 +52,9 @@ uint8_t ds18b20_ReadByte(void)
 //-----------------------------------------------
 void ds18b20_WriteBit(uint8_t bit)
 {
-  GPIOA->ODR &= ~GPIO_ODR_ODR11;
+  GPIOA->ODR &= ~GPIO_ODR_ODR3;
   DelayMicro(bit ? 3 : 65);
-  GPIOA->ODR |= GPIO_ODR_ODR11;
+  GPIOA->ODR |= GPIO_ODR_ODR3;
   DelayMicro(bit ? 65 : 3);
 }
 //-----------------------------------------------
